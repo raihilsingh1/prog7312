@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Smart-X Console</title>
+<style>
+:root{--bg:#e9eef0;--panel:#fff;--ink:#17262b;--mute:#5d7078;--line:#cfd9dd;--teal:#0e6b72;--red:#c0392b;--amber:#b36b00;--green:#2b7a4b}
+*{box-sizing:border-box}
+body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;background:var(--bg);color:var(--ink);display:flex;min-height:100vh}
+nav{width:230px;background:var(--teal);color:#fff;padding:20px 14px;display:flex;flex-direction:column;gap:6px;flex-shrink:0}
+nav h1{font-size:20px;margin:0 6px 16px}
+nav button{background:none;border:0;color:#d5eef0;text-align:left;padding:10px;border-radius:6px;font:inherit;cursor:pointer}
+nav button.active{background:#fff;color:var(--teal);font-weight:600}
+nav button:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid #f2b705;outline-offset:2px}
+nav small{margin-top:auto;padding:6px;color:#bfe3e6}
+main{flex:1;padding:22px;min-width:0}
+section{display:none}section.active{display:block}
+h2{margin:0 0 14px;font-size:22px}h3{margin:0 0 10px;font-size:16px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px;margin-bottom:16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
+.two{display:grid;grid-template-columns:2fr 1fr;gap:16px}
+@media(max-width:900px){body{flex-direction:column}nav{width:auto;flex-direction:row;flex-wrap:wrap}nav small{display:none}.two{grid-template-columns:1fr}}
+.card{border:1px solid var(--line);border-left:5px solid var(--green);border-radius:6px;padding:10px;background:#fbfdfd}
+.card.warning{border-left-color:var(--amber)}.card.critical{border-left-color:var(--red);background:#fff4f2}.card.offline{border-left-color:#8a979c;opacity:.75}
+.card b{display:block}.card .val{font-size:26px;font-weight:600;margin:4px 0}
+.mac{color:var(--mute);font-size:12px}
+.tag{font-size:12px;padding:2px 7px;border-radius:10px;background:#dfe8ea;margin-left:4px}
+button.b,select,input{font:inherit;padding:6px 10px;border:1px solid var(--line);border-radius:6px;background:#fff}
+button.b{cursor:pointer}button.b.pri{background:var(--teal);color:#fff;border-color:var(--teal)}button.b:disabled{opacity:.45;cursor:default}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;padding:6px;border-bottom:1px solid var(--line)}
+ul{margin:0;padding-left:18px}li{margin-bottom:5px}.sug{border:1px solid var(--line);border-radius:6px;padding:8px;margin-bottom:8px}
+.sug.act{border-color:var(--teal);background:#eef9fa}.empty{color:var(--mute)}
+.stat{display:inline-block;margin-right:22px}.stat b{font-size:22px;display:block}
+svg{width:100%;height:120px;background:#f4f8f9;border-radius:6px}
+nav button:disabled{opacity:.45;cursor:not-allowed}
+.pillar{background:#fff;border:1px solid var(--line);border-radius:8px;padding:18px;text-align:left;font:inherit;cursor:pointer;display:flex;flex-direction:column;gap:6px;color:var(--ink)}
+.pillar b{font-size:17px;color:var(--teal)}.pillar span{color:var(--mute)}.pillar:disabled{opacity:.5;cursor:not-allowed}.pillar:not(:disabled):hover{border-color:var(--teal)}
+.tree ul{list-style:none;padding-left:16px;border-left:2px solid var(--line)}.tree>ul{border:0;padding:0}.tree small{color:var(--mute)}
+.stamp{border:2px dashed var(--line);border-radius:50%;width:104px;height:104px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;font-size:12px;color:var(--mute);padding:8px;justify-self:center}
+.stamp b{font-size:13px;color:inherit}.stamp.got{border:3px solid var(--teal);color:var(--teal);background:#eef9fa;transform:rotate(-6deg)}
+a{color:var(--teal)}
+</style>
+</head>
+<body>
+<nav>
+  <h1>Smart-X</h1>
+  <button data-view="home" class="active">Home</button>
+  <button data-view="ingest">Sensor Data Ingestion</button>
+  <button data-view="stream">Real-Time Command Stream</button>
+  <button data-view="topo">Network Topology</button>
+  <small id="conn">Connecting…</small>
+</nav>
+<main>
+<section id="home" class="active">
+  <h2>Smart-X gateway</h2>
+  <p class="empty">Choose a module to open.</p>
+  <div class="grid">
+    <button class="pillar" data-view="ingest"><b>Sensor Data Ingestion and Telemetry</b><span>Register sensors, receive readings, attach logs.</span></button>
+    <button class="pillar" data-view="stream"><b>Real-Time Command Stream and History</b><span>Live dashboard, manual overrides, suggested actions.</span></button>
+    <button class="pillar" data-view="topo"><b>Network Topology and Mesh Routing</b><span>Mesh map, route tracking, spanning tree, historical log.</span></button>
+  </div>
+</section>
+
+<section id="ingest">
+  <h2>Sensor data ingestion and telemetry</h2>
+  <div class="panel">
+    <h3>Device simulator</h3>
+    <p class="empty">Each simulated device sends its readings to POST /api/telemetry, just like real hardware.</p>
+    <div class="row">
+      <button class="b pri" id="simToggle">Start simulator</button>
+      <button class="b" id="fMoist">Drop moisture sensor</button>
+      <button class="b" id="fPower">Spike power</button>
+      <button class="b" id="fDisc">Disconnect relay</button>
+    </div>
+  </div>
+  <div class="panel" id="stats"></div>
+  <div class="two">
+    <div class="panel"><h3>Register a sensor</h3>
+      <div class="row"><input id="rMac" placeholder="MAC or unique ID, e.g. A4:CF:12:00:00:09"><input id="rName" placeholder="Sensor name"><select id="rCat"><option>Environmental</option><option>Power Consumption</option><option>Actuator</option></select></div>
+      <div class="row"><input id="rLoc" list="paths" placeholder="Sub-Zone B -> Zone 1 -> Facility A" style="flex:1;min-width:240px"><button class="b pri" id="rGo">Register sensor</button></div>
+      <p id="regMsg" class="empty"></p><datalist id="paths"></datalist></div>
+    <div class="panel"><h3>Deployment tree</h3><div class="tree" id="tree"></div></div>
+  </div>
+  <div class="two">
+    <div class="panel" style="overflow-x:auto"><h3>Registered devices</h3><div id="devTable"></div></div>
+    <div class="panel"><h3>Latest packets</h3><div id="recent"></div></div>
+  </div>
+  <div class="two">
+    <div class="panel"><h3>Attach a file to a sensor</h3>
+      <p class="empty">Config files, deployment photos or hardware logs (.json .cfg .ini .txt .log .csv .png .jpg .webp, up to 10 MB).</p>
+      <div class="row"><select id="aDev"></select><input type="file" id="aFile"><button class="b pri" id="aGo">Upload file</button></div><p id="attMsg" class="empty"></p></div>
+    <div class="panel"><h3>Compare two power meters</h3>
+      <div class="row"><select id="gA"></select><select id="gB"></select><button class="b" id="gGo">Add and compare</button></div><div id="gOut" class="empty">Pick two devices that report watts.</div></div>
+  </div>
+  <div class="panel"><h3>Commissioning passport</h3><p class="empty">Collect a stamp for each real task you complete in the gateway.</p><div class="grid" id="passport"></div></div>
+</section>
+
+<section id="stream">
+  <h2>Real-time command stream</h2>
+  <div class="two">
+    <div>
+      <div class="panel">
+        <div class="row">
+          <input id="search" placeholder="Search by device name or MAC" style="flex:1;min-width:180px">
+          <select id="cat"><option value="all">All categories</option><option>Environmental</option><option>Power Consumption</option><option>Actuator</option></select>
+          <label><input type="checkbox" id="alertsOnly"> Alerts only</label>
+          <button class="b" id="undo">Undo last command</button>
+        </div>
+        <div class="grid" id="cards"></div>
+      </div>
+      <div class="panel"><h3 id="chartTitle">Select a device to see its history</h3><div id="chart"></div></div>
+    </div>
+    <div>
+      <div class="panel"><h3>Suggested actions and automated insights</h3><div id="sugs"></div></div>
+      <div class="panel"><h3>Active faults</h3><div id="faults"></div></div>
+      <div class="panel"><h3>Recent alerts</h3><div id="alerts"></div></div>
+      <div class="panel"><h3>Command history</h3><div id="cmds"></div></div>
+    </div>
+  </div>
+</section>
+
+<section id="topo">
+  <h2>Network topology and mesh routing</h2>
+  <div class="two">
+    <div class="panel"><h3>Mesh network</h3>
+      <div id="meshSvg"><p class="empty">No links yet. Start the simulator on the ingestion page, or add links below.</p></div>
+      <p class="mac" id="meshInfo"></p>
+      <div class="row"><b>Add link:</b><select id="lA"></select><select id="lB"></select>
+        <input id="lW" type="number" value="2" min="0.1" step="0.1" style="width:80px" title="Link power cost"><button class="b" id="lGo">Add link</button></div>
+      <p id="linkMsg" class="empty"></p></div>
+    <div>
+      <div class="panel"><h3>Track a node's route</h3>
+        <div class="row"><input id="tId" placeholder="MAC address or node name" style="flex:1"><button class="b pri" id="tGo">Trace route</button></div>
+        <div id="tOut" class="empty">Enter a MAC address or name, e.g. Pump A.</div></div>
+      <div class="panel"><h3>Connected devices</h3>
+        <div class="row">Reachable from <select id="reachFrom"></select></div><div id="reach"></div></div>
+      <div class="panel"><h3>Down nodes and detours</h3><div id="downs"></div></div>
+    </div>
+  </div>
+  <div class="panel"><h3>Historical telemetry log</h3>
+    <div class="row"><select id="hDev"></select>
+      <label>From <input type="datetime-local" id="hFrom"></label><label>To <input type="datetime-local" id="hTo"></label>
+      <button class="b pri" id="hGo">Query</button><button class="b" id="h5">Last 5 minutes</button></div>
+    <p id="hInfo" class="empty">Leave the dates empty to fetch all readings.</p>
+    <div id="hTable" style="max-height:260px;overflow:auto"></div></div>
+</section>
+</main>
+
+<script>
+const $=s=>document.querySelector(s);
+const esc=t=>String(t??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const sev=n=>n===0?"critical":n===1?"warning":"ok";
+const tm=d=>new Date(d).toLocaleTimeString();
+async function api(u,o){const r=await fetch(u,o);if(!r.ok)throw new Error(await r.text());return r.status===204?null:r.json();}
+const post=(u,b)=>api(u,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b)});
+let q="",cat="all",alertsOnly=false,selected=null,timer;
+
+// Navigation: views are only hidden, never reloaded, so state is kept
+function show(v){document.querySelectorAll("nav button,section").forEach(e=>e.classList.remove("active"));
+  document.querySelector(`nav button[data-view=${v}]`).classList.add("active");$("#"+v).classList.add("active");}
+document.querySelectorAll("[data-view]").forEach(b=>{if(!b.disabled)b.onclick=()=>show(b.dataset.view);});
+
+// Simulator
+const sim=[
+ {mac:"A4:CF:12:00:00:01",name:"Moisture Sensor B",category:"Environmental",loc:"Sub-Zone B -> Zone 1 -> Facility A",metric:"moisture",unit:"%",base:55,v:55,noise:3},
+ {mac:"A4:CF:12:00:00:02",name:"Pump A",category:"Actuator",loc:"Sub-Zone B -> Zone 1 -> Facility A",metric:"flow",unit:"L/min",base:4,v:4,noise:.5},
+ {mac:"A4:CF:12:00:00:03",name:"Smart Plug 1",category:"Power Consumption",loc:"Sub-Zone A -> Zone 1 -> Facility A",metric:"power",unit:"W",base:900,v:900,noise:80},
+ {mac:"A4:CF:12:00:00:04",name:"Greenhouse Temp",category:"Environmental",loc:"Sub-Zone A -> Zone 2 -> Facility A",metric:"temperature",unit:"°C",base:26,v:26,noise:1},
+ {mac:"A4:CF:12:00:00:05",name:"Relay 2",category:"Power Consumption",loc:"Sub-Zone A -> Zone 1 -> Facility B",metric:"power",unit:"W",base:300,v:300,noise:30}];
+const send=d=>post("/api/telemetry",{mac:d.mac,name:d.name,category:d.category,metric:d.metric,value:d.v,unit:d.unit}).catch(()=>{});
+function simTick(){sim.forEach(d=>{if(d.offline)return;d.v+=(d.base-d.v)*.2+(Math.random()-.5)*d.noise;send(d);});}
+$("#simToggle").onclick=async e=>{if(timer){clearInterval(timer);timer=null;e.target.textContent="Start simulator";}else{
+  for(const d of sim)await post("/api/register",{mac:d.mac,name:d.name,category:d.category,location:d.loc}).catch(()=>{});
+  const L=[["GATEWAY",0,2],["GATEWAY",2,4],[0,1,1],[0,3,3],[1,4,2],[2,3,1],[3,4,5]];
+  for(const [a,b,w] of L)await post("/api/mesh/link",{a:typeof a==="string"?a:sim[a].mac,b:sim[b].mac,cost:w}).catch(()=>{});
+  simTick();timer=setInterval(simTick,2000);e.target.textContent="Stop simulator";}};
+$("#fMoist").onclick=()=>{sim[0].v=12;send(sim[0]);};
+$("#fPower").onclick=()=>{sim[2].v=2300;send(sim[2]);};
+$("#fDisc").onclick=e=>{sim[4].offline=!sim[4].offline;e.target.textContent=sim[4].offline?"Reconnect relay":"Disconnect relay";};
+
+// Search, filter, undo
+let st;$("#search").oninput=e=>{q=e.target.value;refresh();clearTimeout(st);st=setTimeout(()=>q.trim()&&post("/api/searches",{term:q.trim()}),1200);};
+$("#cat").onchange=e=>{cat=e.target.value;refresh();};
+$("#alertsOnly").onchange=e=>{alertsOnly=e.target.checked;refresh();};
+$("#undo").onclick=async()=>{await post("/api/commands/undo");refresh();};
+document.addEventListener("click",async e=>{
+  const b=e.target.closest("[data-act]");if(!b)return;
+  if(b.dataset.act==="cmd"){await post("/api/commands",{mac:b.dataset.mac,action:b.dataset.action});}
+  if(b.dataset.act==="hist"){selected=b.dataset.mac;}
+  refresh();
+});
+
+let selKey="";
+function fillSelects(all){
+  const key=all.map(d=>d.mac+d.name+d.metric).join();if(key===selKey)return;selKey=key;
+  const fill=(id,list)=>{const el=$(id),v=el.value;el.innerHTML=list.map(d=>`<option value="${esc(d.mac)}">${esc(d.name)}</option>`).join("");if(v)el.value=v;};
+  const fillG=id=>{const el=$(id),v=el.value;el.innerHTML=`<option value="GATEWAY">Gateway</option>`+all.map(d=>`<option value="${esc(d.mac)}">${esc(d.name)}</option>`).join("");if(v)el.value=v;};
+  fill("#aDev",all);fill("#hDev",all);fillG("#lA");fillG("#lB");fillG("#reachFrom");const pw=all.filter(d=>d.metric==="power");fill("#gA",pw);fill("#gB",pw);if(pw.length>1&&$("#gA").value===$("#gB").value)$("#gB").selectedIndex=1;
+}
+const STAMPS=[["registered","Sensor commissioned"],["firstPacket","First signal"],["attached","Paper trail"],["aggregated","Load balanced"],["critical","Fast lane"],["command","Hands on"],["undo","Second thoughts"],["linked","Mesh builder"],["routed","Path finder"],["queried","Time traveller"]];
+function render(s){
+  fillSelects(s.allDevices);
+  $("#passport").innerHTML=STAMPS.map(([k,n])=>`<div class="stamp ${s.stamps.includes(k)?"got":""}"><b>${n}</b>${s.stamps.includes(k)?"stamped":"not yet"}</div>`).join("");
+  $("#stats").innerHTML=`<span class="stat"><b>${s.stats.devices}</b>devices</span><span class="stat"><b>${s.stats.processed}</b>packets processed</span><span class="stat"><b>${s.stats.standard}</b>in standard queue</span><span class="stat"><b>${s.stats.critical}</b>in priority queue</span>`;
+  $("#devTable").innerHTML=s.allDevices.length?`<table><tr><th>Device</th><th>Location</th><th>Reading</th><th>Status</th><th>Batched</th><th>Files</th></tr>${s.allDevices.map(d=>`<tr><td>${esc(d.name)}</td><td class="mac">${esc(d.location||"unregistered")}<br>${esc(d.mac)}</td><td>${d.value} ${esc(d.unit)}</td><td>${d.online?sev(d.severity):"offline"}</td><td>${d.archived}<small class="mac"> +${d.pending}</small></td><td>${d.attachments.map(a=>`<a href="/api/devices/${encodeURIComponent(d.mac)}/attachments/${a.storedName}">${esc(a.fileName)}</a>`).join("<br>")}</td></tr>`).join("")}</table>`:`<p class="empty">No devices yet. Start the simulator.</p>`;
+  $("#recent").innerHTML=s.recent.length?`<ul>${s.recent.map(p=>`<li>${tm(p.timestamp)} ${esc(p.name)}: ${p.value.toFixed?p.value.toFixed(1):p.value} ${esc(p.unit)}</li>`).join("")}</ul>`:`<p class="empty">Waiting for packets.</p>`;
+  $("#cards").innerHTML=s.devices.length?s.devices.map(d=>`<div class="card ${d.online?sev(d.severity):"offline"}"><b>${esc(d.name)}<span class="tag">${esc(d.category)}</span></b><span class="mac">${esc(d.mac)}${d.location?" · "+esc(d.location):""}</span><div class="val">${d.value} ${esc(d.unit)}</div><div>${d.online?sev(d.severity):"offline"} · switch ${d.state}</div><div class="row" style="margin:8px 0 0"><button class="b" data-act="cmd" data-mac="${d.mac}" data-action="on">On</button><button class="b" data-act="cmd" data-mac="${d.mac}" data-action="off">Off</button><button class="b" data-act="cmd" data-mac="${d.mac}" data-action="toggle">Toggle</button><button class="b" data-act="hist" data-mac="${d.mac}">History</button></div></div>`).join(""):`<p class="empty">No devices match. Clear the search or filters.</p>`;
+  $("#undo").disabled=!s.canUndo;
+  $("#sugs").innerHTML=s.suggestions.length?s.suggestions.map(x=>`<div class="sug ${x.action?"act":""}"><b>${esc(x.kind)}</b><br>${esc(x.text)}${x.action?`<div class="row" style="margin:6px 0 0"><button class="b pri" data-act="cmd" data-mac="${x.mac}" data-action="${x.action}">Apply</button></div>`:""}</div>`).join(""):`<p class="empty">Everything looks normal.</p>`;
+  $("#faults").innerHTML=s.faults.length?`<ul>${s.faults.map(f=>`<li>${esc(f.replace("|"," – "))}</li>`).join("")}</ul>`:`<p class="empty">No active faults.</p>`;
+  $("#alerts").innerHTML=s.alerts.length?`<ul>${s.alerts.map(a=>`<li>${tm(a.time)} ${esc(a.message)}</li>`).join("")}</ul>`:`<p class="empty">No alerts.</p>`;
+  $("#cmds").innerHTML=s.commands.length?`<ul>${s.commands.map(c=>`<li>${tm(c.time)} ${esc(c.deviceName)}: ${c.previousState} → ${c.newState}${c.undone?" (undone)":""}</li>`).join("")}</ul>`:`<p class="empty">No commands sent yet.</p>`;
+}
+async function drawChart(){
+  if(!selected)return;
+  const h=await api("/api/history/"+encodeURIComponent(selected));
+  const d=(await api("/api/snapshot")).allDevices.find(x=>x.mac===selected);
+  $("#chartTitle").textContent=d?`${d.name} history`:"History";
+  if(h.length<2){$("#chart").innerHTML=`<p class="empty">Not enough readings yet.</p>`;return;}
+  const v=h.map(x=>x.value),mn=Math.min(...v),mx=Math.max(...v),r=mx-mn||1;
+  const pts=v.map((y,i)=>`${(i/(v.length-1))*400},${110-((y-mn)/r)*100}`).join(" ");
+  $("#chart").innerHTML=`<svg viewBox="0 0 400 120" preserveAspectRatio="none"><polyline points="${pts}" fill="none" stroke="#0e6b72" stroke-width="2"/></svg><p class="mac">min ${mn.toFixed(1)} · max ${mx.toFixed(1)} · last ${v.at(-1).toFixed(1)}</p>`;
+}
+async function refresh(){
+  try{
+    render(await api("/api/snapshot?"+new URLSearchParams({q,category:cat,alertsOnly})));
+    $("#conn").textContent="API connected";drawChart();refreshMesh();
+  }catch(e){$("#conn").textContent="API unreachable";}
+}
+let routeMacs=[];
+async function refreshMesh(){
+  if(!$("#topo").classList.contains("active"))return;
+  try{
+    const m=await api("/api/mesh?from="+encodeURIComponent($("#reachFrom").value||"GATEWAY"));
+    const others=m.nodes.filter(x=>x.id!=="GATEWAY"),pos={GATEWAY:[250,170]};
+    others.forEach((x,i)=>{const a=2*Math.PI*i/others.length-Math.PI/2;pos[x.id]=[250+170*Math.cos(a),170+130*Math.sin(a)];});
+    const ln=(a,b,st)=>`<line x1="${pos[a][0]}" y1="${pos[a][1]}" x2="${pos[b][0]}" y2="${pos[b][1]}" ${st}/>`;
+    let svg="";
+    for(let i=0;i+1<routeMacs.length;i++)if(pos[routeMacs[i]]&&pos[routeMacs[i+1]])svg+=ln(routeMacs[i],routeMacs[i+1],'stroke="#e0a100" stroke-width="9" opacity=".55" stroke-linecap="round"');
+    svg+=m.edges.map(e=>ln(e.a,e.b,`stroke="${e.mst?"#0e6b72":"#9aa9af"}" stroke-width="${e.mst?3.5:1.5}" ${e.live?"":'stroke-dasharray="5 4" opacity=".5"'}`)
+      +`<text x="${(pos[e.a][0]+pos[e.b][0])/2}" y="${(pos[e.a][1]+pos[e.b][1])/2-4}" font-size="11" fill="#5d7078" text-anchor="middle">${e.w}</text>`).join("");
+    svg+=m.nodes.map(n=>{const c=!n.up?"#c0392b":n.connected?"#0e6b72":"#b36b00";
+      return `<circle cx="${pos[n.id][0]}" cy="${pos[n.id][1]}" r="${n.id==="GATEWAY"?20:15}" fill="${n.up?"#fff":"#fde0dc"}" stroke="${c}" stroke-width="3"/><text x="${pos[n.id][0]}" y="${pos[n.id][1]+32}" font-size="11" text-anchor="middle" fill="#17262b">${esc(n.name)}</text>`;}).join("");
+    $("#meshSvg").innerHTML=m.nodes.length>1?`<svg viewBox="0 0 500 340" style="height:auto" role="img" aria-label="Mesh network graph">${svg}</svg>`:`<p class="empty">No links yet. Start the simulator on the ingestion page, or add links below.</p>`;
+    $("#meshInfo").textContent=`Thick teal links form the minimum spanning tree (total power cost ${m.mstTotal}). Dashed links touch a node that is down. Numbers are link costs.`;
+    $("#reach").innerHTML=`<ul>${m.reachable.map(r=>`<li>${esc(r.name)} <small class="mac">${r.hops} hop${r.hops===1?"":"s"}</small></li>`).join("")}</ul>`;
+    $("#downs").innerHTML=m.down.length?`<ul>${m.down.map(d=>`<li><b>${esc(d.name)}</b> is ${d.reason}.${d.reroutes.length?" Neighbours now hop: "+d.reroutes.map(r=>`${esc(r.node)} via ${r.route.map(esc).join(" → ")}`).join("; "):""}</li>`).join("")}</ul>`:`<p class="empty">All linked nodes are online.</p>`;
+  }catch(e){}
+}
+const iso=v=>v?new Date(v).toISOString():"";
+async function hist(){
+  if(!$("#hDev").value)return;
+  try{
+    const r=await api(`/api/history/${encodeURIComponent($("#hDev").value)}/range?from=${encodeURIComponent(iso($("#hFrom").value))}&to=${encodeURIComponent(iso($("#hTo").value))}`);
+    $("#hInfo").textContent=`${r.count} readings found. The AVL tree (height ${r.height}) visited ${r.visited} of ${r.total} nodes.`;
+    $("#hTable").innerHTML=r.readings.length?`<table><tr><th>Time</th><th>Metric</th><th>Value</th></tr>${r.readings.slice().reverse().map(x=>`<tr><td>${new Date(x.time).toLocaleString()}</td><td>${esc(x.metric)}</td><td>${x.value.toFixed(1)}</td></tr>`).join("")}</table>`:`<p class="empty">No readings in that range.</p>`;
+  }catch(e){$("#hInfo").textContent=clean(e);$("#hTable").innerHTML="";}
+}
+$("#hGo").onclick=hist;
+$("#h5").onclick=()=>{const f=new Date(Date.now()-5*60000),p=n=>String(n).padStart(2,"0");
+  $("#hFrom").value=`${f.getFullYear()}-${p(f.getMonth()+1)}-${p(f.getDate())}T${p(f.getHours())}:${p(f.getMinutes())}`;$("#hTo").value="";hist();};
+$("#lGo").onclick=async()=>{try{await post("/api/mesh/link",{a:$("#lA").value,b:$("#lB").value,cost:parseFloat($("#lW").value)});$("#linkMsg").textContent="Link added.";refresh();}catch(e){$("#linkMsg").textContent=clean(e);}};
+$("#tGo").onclick=async()=>{try{
+  const r=await api("/api/mesh/route/"+encodeURIComponent($("#tId").value.trim()));
+  routeMacs=r.mstMacs||[];
+  $("#tOut").innerHTML=!r.up?`<b>${esc(r.name)}</b> is offline.`:`<b>${esc(r.name)}</b><br>Fewest hops: ${r.hopRoute?esc(r.hopRoute.join(" → "))+` (cost ${r.hopCost})`:"no route"}<br>Spanning tree route (highlighted): ${r.mstRoute?esc(r.mstRoute.join(" → "))+` (cost ${r.mstCost})`:"no route"}`;
+  refresh();}catch(e){routeMacs=[];$("#tOut").textContent=clean(e);}};
+$("#reachFrom").onchange=refresh;
+const treeHtml=n=>`<li>${esc(n.name)} <small>${n.kind}</small>${n.children.length?`<ul>${n.children.map(treeHtml).join("")}</ul>`:""}</li>`;
+api("/api/deployment").then(d=>{$("#tree").innerHTML=`<ul>${treeHtml(d.root)}</ul>`;$("#paths").innerHTML=d.paths.map(p=>`<option value="${esc(p)}">`).join("");});
+const clean=e=>e.message.replace(/^"|"$/g,"");
+$("#rGo").onclick=async()=>{try{const d=await post("/api/register",{mac:$("#rMac").value,name:$("#rName").value,category:$("#rCat").value,location:$("#rLoc").value});$("#regMsg").textContent=`Registered ${d.name} at ${d.location}.`;refresh();}catch(e){$("#regMsg").textContent=clean(e);}};
+$("#aGo").onclick=async()=>{const f=$("#aFile").files[0];if(!f||!$("#aDev").value){$("#attMsg").textContent="Pick a device and a file first.";return;}
+  const fd=new FormData();fd.append("file",f);
+  const r=await fetch("/api/devices/"+encodeURIComponent($("#aDev").value)+"/attachments",{method:"POST",body:fd});
+  $("#attMsg").textContent=r.ok?`Attached ${f.name}.`:(await r.text()).replace(/^"|"$/g,"");$("#aFile").value="";refresh();};
+$("#gGo").onclick=async()=>{try{const r=await api(`/api/aggregate?a=${encodeURIComponent($("#gA").value)}&b=${encodeURIComponent($("#gB").value)}`);
+  $("#gOut").textContent=`Combined load ${r.total} W. Difference ${r.delta} W. Higher load: ${r.higher}.`;refresh();}catch(e){$("#gOut").textContent=clean(e);}};
+refresh();setInterval(refresh,1500);
+</script>
+</body>
+</html>
